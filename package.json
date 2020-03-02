@@ -23,6 +23,10 @@
   },
   "homepage": "https://github.com/salkinxd/SpotifySongRequests#readme",
   "dependencies": {
+    "dank-twitch-irc": "^3.0.7",
+    "express": "^4.17.1",
+    "request": "^2.88.2",
+    "spotify-web-api-node": "^4.0.0",
     "tmi.js": "^1.5.0"
   }
 }
