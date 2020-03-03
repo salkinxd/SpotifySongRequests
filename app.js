@@ -30,12 +30,11 @@ function onConnectedHandler (addr, port) {
 // Called every time a message comes in
 function onMessageHandler (target, context, msg, self) {
   if (self) { return; } // Ignore messages from the bot
-  console.log(msg);
   // Remove whitespace from chat message
   const args = msg.slice(prefix.length).split(' ');
   const command = args.shift().toLowerCase();
-  console.log(command)
-  console.log(args)
+  console.log("Command: " + command)
+  console.log("Args: " + args)
   // If the command is known, let's execute it
   if (command === 'sr') {
     var arguments = args.join(" ").trim();
@@ -64,8 +63,8 @@ function addToPlaylist(args) {
   
   request.post(authOptions, function(error, response, body) {
     var access_token = body.access_token;
-    console.log(response.statusCode);
-    console.log(response.statusMessage);
+    console.log("Status code: " + response.statusCode);
+    console.log("Status message: " + response.statusMessage);
     if (!error && response.statusCode === 200) {
       
       var findSongOptions = {
@@ -73,26 +72,50 @@ function addToPlaylist(args) {
         headers: { 'Authorization': 'Bearer ' + access_token}
       }
       request.get(findSongOptions, function(error, response, findSongBody) {
-        if (!error) {
-          console.log(JSON.parse(findSongBody).tracks.items[0])
+        if (error) { console.error(error); return; }
           var trackURI = JSON.parse(findSongBody).tracks.items[0].uri
-          requestURL = "https://api.spotify.com/v1/playlists/" + playlist_id + "/tracks?position=0&uris=" + trackURI;
-          var addTrackOptions = {
-            url: requestURL,
-            headers: { 'Authorization': 'Bearer ' + access_token}
-          };
-          request.post(addTrackOptions, function(error, response, body) {
-            console.log(body);
-            client.say(CHANNEL_NAME, "Added '" + JSON.parse(findSongBody).tracks.items[0].name + " - " + JSON.parse(findSongBody).tracks.items[0].artists[0].name + "' to the Playlist!")
-            .then((data) => {
-                console.log("Sent Message!");
-            }).catch((err) => {
-                console.error(err);
-            });
-          })
-        } else {
-          console.log(error);
-        }
+          var trackURIshort = trackURI.split(":")[2]
+          
+          console.log("Short Song URI: " + trackURIshort);
+          console.log("Song URI: " + trackURI);
+          var findDupeOptions = {
+            url: "https://api.spotify.com/v1/playlists/" + playlist_id + "/tracks?fields=items(track.id)&limit=100",
+            headers: { 'Authorization': 'Bearer ' + access_token},
+            json: true
+          }
+          request.get(findDupeOptions, function(error, response, findDupeBody) {
+            var itemArray = findDupeBody.items;
+            function checkIfTrackExists(age) {
+              return age.track.id === trackURIshort;
+              
+            }
+            if(itemArray.some(checkIfTrackExists)) {
+                console.log("Song already exists!");
+                client.say(CHANNEL_NAME, "Song: " + JSON.parse(findSongBody).tracks.items[0].name + " - " + JSON.parse(findSongBody).tracks.items[0].artists[0].name + " already exists in the playlist!")
+                  .then((data) => {
+                    console.log("Already exists message sent!");
+                  }).catch((err) => {
+                    console.error(err);
+                  });
+                  return;
+              } else {
+                console.log("Song doesn't exist!");
+                requestURL = "https://api.spotify.com/v1/playlists/" + playlist_id + "/tracks?position=0&uris=" + trackURI;
+                var addTrackOptions = {
+                  url: requestURL,
+                  headers: { 'Authorization': 'Bearer ' + access_token}
+                };
+                request.post(addTrackOptions, function(error, response, body) {
+                  client.say(CHANNEL_NAME, "Added '" + JSON.parse(findSongBody).tracks.items[0].name + " - " + JSON.parse(findSongBody).tracks.items[0].artists[0].name + "' to the Playlist!")
+                  .then((data) => {
+                    console.log("Sent Message!");
+                  }).catch((err) => {
+                    console.error(err);
+                  });
+                });
+                return;
+              }
+          });
       });
     }
   });
