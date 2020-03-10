@@ -1,16 +1,41 @@
-const {client_secret, client_id, refresh_token, playlist_id, prefix, BOT_USERNAME, OAUTH_TOKEN, CHANNEL_NAME} = require('./config.json');
-var request = require('request'); // "Request" library
+var SpotifyWebApi = require('spotify-web-api-node');
+var config = require("./config.json");
 var tmi = require('tmi.js');
-const opts = {
-  identity: {
-    username: BOT_USERNAME,
-    password: OAUTH_TOKEN
-  },
-  channels: [
-    CHANNEL_NAME
-  ]
+var votes = 0;
+var credentials = {
+	clientId: config.client_id,
+	clientSecret: config.client_secret,
+	redirectUri: 'https://salkin.at/callback'
 };
 
+const opts = {
+	identity: {
+		username: config.BOT_USERNAME,
+		password: config.OAUTH_TOKEN
+	},
+	channels: [
+		config.CHANNEL_NAME
+	]
+};
+
+var spotifyApi = new SpotifyWebApi(credentials);
+
+
+spotifyApi.setRefreshToken(config.refresh_token);
+function refreshToken() {
+	spotifyApi.refreshAccessToken().then(
+		function(data) {
+			console.log('The access token has been refreshed!');
+	
+			// Save the access token so that it's used in future calls
+			spotifyApi.setAccessToken(data.body['access_token']);
+		},
+		function(err) {
+			console.log('Could not refresh access token', err);
+		}
+	);
+}
+refreshToken();
 // Create a client with our options
 const client = new tmi.client(opts);
 
@@ -31,92 +56,106 @@ function onConnectedHandler (addr, port) {
 function onMessageHandler (target, context, msg, self) {
   if (self) { return; } // Ignore messages from the bot
   // Remove whitespace from chat message
-  const args = msg.slice(prefix.length).split(' ');
+  const args = msg.slice(config.prefix.length).split(' ');
   const command = args.shift().toLowerCase();
   console.log("Command: " + command)
   console.log("Args: " + args)
   // If the command is known, let's execute it
   if (command === 'sr') {
-    var arguments = args.join(" ").trim();
-    addToPlaylist(arguments);
+    if (args.length > 0) {
+      var arguments = args.join(" ").trim();
+      addToPlaylist(arguments);
+    } else {
+      client.say(config.CHANNEL_NAME, "Mit \"!sr song\" kannst du einen Song anfragen!")
+      .then((data) => {
+          console.log("Sent Message!");
+      }).catch((err) => {
+          console.error(err);
+      });
+    }
+
   }
   if (command === 'srplaylist') {
-    client.say(CHANNEL_NAME, "This is the playlist: https://open.spotify.com/playlist/" + playlist_id)
+    client.say(config.CHANNEL_NAME, "Das ist die Playlist: https://open.spotify.com/playlist/" + config.playlist_id)
     .then((data) => {
-        console.log("Sent Message!");
+        console.log("Sent Message!", data);
     }).catch((err) => {
         console.error(err);
     });
   }
+  if (command === "song") {
+    nowPlaying();
+  }
+  if (command === "skip") {
+	  console.log(context['mod']);
+	  if (context['mod'] || context['display-name'] === "Salkinxd" || context['display-name'] === "SpiceTV") {
+		  console.log("User is mod!");
+		  skipTrack();
+	  } else {
+		  console.log("User is not a mod!")
+		  client.say(config.CHANNEL_NAME, "Sorry, du bist leider kein Moderator.").then((data) => {console.log("Message sent!", data);}).catch((err) => {console.error(err);});
+	  }
+    
+  }
 }
 
 function addToPlaylist(args) {
-  var authOptions = {
-    url: 'https://accounts.spotify.com/api/token',
-    headers: { 'Authorization': 'Basic ' + (new Buffer(client_id + ':' + client_secret).toString('base64')) },
-    form: {
-      grant_type: 'refresh_token',
-      refresh_token: refresh_token
-    },
-    json: true
-  };
-  
-  request.post(authOptions, function(error, response, body) {
-    var access_token = body.access_token;
-    console.log("Status code: " + response.statusCode);
-    console.log("Status message: " + response.statusMessage);
-    if (!error && response.statusCode === 200) {
-      
-      var findSongOptions = {
-        url: "https://api.spotify.com/v1/search?q=" + encodeURIComponent(args) + "&type=track&limit=1",
-        headers: { 'Authorization': 'Bearer ' + access_token}
-      }
-      request.get(findSongOptions, function(error, response, findSongBody) {
-        if (error) { console.error(error); return; }
-          var trackURI = JSON.parse(findSongBody).tracks.items[0].uri
-          var trackURIshort = trackURI.split(":")[2]
-          
-          console.log("Short Song URI: " + trackURIshort);
-          console.log("Song URI: " + trackURI);
-          var findDupeOptions = {
-            url: "https://api.spotify.com/v1/playlists/" + playlist_id + "/tracks?fields=items(track.id)&limit=100",
-            headers: { 'Authorization': 'Bearer ' + access_token},
-            json: true
-          }
-          request.get(findDupeOptions, function(error, response, findDupeBody) {
-            var itemArray = findDupeBody.items;
-            function checkIfTrackExists(age) {
-              return age.track.id === trackURIshort;
-              
-            }
-            if(itemArray.some(checkIfTrackExists)) {
-                console.log("Song already exists!");
-                client.say(CHANNEL_NAME, "Song: " + JSON.parse(findSongBody).tracks.items[0].name + " - " + JSON.parse(findSongBody).tracks.items[0].artists[0].name + " already exists in the playlist!")
-                  .then((data) => {
-                    console.log("Already exists message sent!");
-                  }).catch((err) => {
-                    console.error(err);
-                  });
-                  return;
-              } else {
-                console.log("Song doesn't exist!");
-                requestURL = "https://api.spotify.com/v1/playlists/" + playlist_id + "/tracks?position=0&uris=" + trackURI;
-                var addTrackOptions = {
-                  url: requestURL,
-                  headers: { 'Authorization': 'Bearer ' + access_token}
-                };
-                request.post(addTrackOptions, function(error, response, body) {
-                  client.say(CHANNEL_NAME, "Added '" + JSON.parse(findSongBody).tracks.items[0].name + " - " + JSON.parse(findSongBody).tracks.items[0].artists[0].name + "' to the Playlist!")
-                  .then((data) => {
-                    console.log("Sent Message!");
-                  }).catch((err) => {
-                    console.error(err);
-                  });
-                });
-                return;
-              }
-          });
-      });
-    }
+	spotifyApi.searchTracks(args)
+  	.then(function(SearchTrackdata) {
+		//client.say(config.CHANNEL_NAME, "Song: " + data.body.tracks.items[0].name + " von " +  data.body.tracks.items[0].artists[0].name + " wurde hinzugefügt!").then((data) => {console.log("Message sent!", data);}).catch((err) => {console.error(err);});
+		var trackURI = SearchTrackdata.body.tracks.items[0].uri
+		var trackURIshort = SearchTrackdata.body.tracks.items[0].uri.split(":")[2]
+		spotifyApi.getPlaylistTracks(config.playlist_id)
+		.then(
+			function(GetPlaylistdata) {
+				//console.log('The playlist contains these tracks', GetPlaylistdata.body.items);
+				function checkIfTrackExists(age) { return age.track.id === trackURIshort; }
+				if(GetPlaylistdata.body.items.some(checkIfTrackExists)) {
+					console.log("Song already exists!");
+					client.say(config.CHANNEL_NAME, "Dieser Song existiert bereits auf der Playlist!").then((data) => {console.log("Message sent!", data);}).catch((err) => {console.error(err);});
+					return;
+				} else {
+					console.log("Song doesn't exist!");
+					spotifyApi.addTracksToPlaylist(config.playlist_id, [SearchTrackdata.body.tracks.items[0].uri])
+					.then(function(addTracksdata) {
+						console.log('Added tracks to playlist!');
+						client.say(config.CHANNEL_NAME, "Der Song: " + SearchTrackdata.body.tracks.items[0].name + " - " + SearchTrackdata.body.tracks.items[0].artists[0].name + " wurde hinzugefügt!").then((data) => {console.log("Message sent!", data);}).catch((err) => {console.error(err);});
+					}, function(err) {
+						console.log('Something went wrong when adding songs!', err);
+					});
+					return;
+				}
+			},
+			function(err) {
+				console.log('Something went wrong!', err);
+			}
+		);
+  }, function(err) {
+    console.error(err);
   });
 }
+
+function nowPlaying() {
+	spotifyApi.getMyCurrentPlaybackState({})
+	.then(function(data) {
+	  // Output items
+	  console.log("Now Playing: ",data.body.item.name);
+	  client.say(config.CHANNEL_NAME, "Der momentane Song ist: " + data.body.item.name + " von " + data.body.item.artists[0].name).then((data) => {console.log("Message sent!", data);}).catch((err) => {console.error(err);});
+	}, function(err) {
+	  console.log('Something went wrong!', err);
+	});
+}
+function skipTrack() {
+	spotifyApi.skipToNext()
+	.then(function(data) {
+		console.log("Skipped to next track!", data)
+		client.say(config.CHANNEL_NAME, "Der song wurde geskipped!").then((data) => {console.log("Message sent!", data);}).catch((err) => {console.error(err);});
+	}, function(err) {
+		if (err.statusCode == 404) {
+			client.say(config.CHANNEL_NAME, "Es wird keine Musik abgespielt!").then((data) => {console.log("Message sent!", data);}).catch((err) => {console.error(err);});
+		}
+		console.log('Something went wrong!', err.statusCode);
+	})
+}
+
+setTimeout(refreshToken,3500000)
