@@ -1,14 +1,14 @@
 <h1 align="center">Welcome to Spotify Song Requests Bot 👋</h1>
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-1.0.0-blue.svg?cacheSeconds=2592000" />
-  <a href="https://github.com/salkinxd/SpotifySongRequests#readme" target="_blank">
-    <img alt="Documentation" src="https://img.shields.io/badge/documentation-yes-brightgreen.svg" />
-  </a>
+  <img alt="GitHub package.json version" src="https://img.shields.io/github/package-json/v/salkinxd/SpotifySongRequests">
   <a href="https://github.com/salkinxd/SpotifySongRequests/graphs/commit-activity" target="_blank">
     <img alt="Maintenance" src="https://img.shields.io/badge/Maintained%3F-yes-green.svg" />
   </a>
-  <a href="https://github.com/salkinxd/SpotifySongRequests/blob/master/LICENSE" target="_blank">
-    <img alt="License: ISC" src="https://img.shields.io/github/license/salkinxd/spotify-song-requests" />
+  <a href="https://twitter.com/salkinxd" target="_blank">
+    <img alt="Twitter Follow" src="https://img.shields.io/twitter/follow/salkinxd?label=Follow&style=social">
+  </a>
+  <a href="https://discord.gg/TjtTJV4" target="_blank">
+    <img alt="Discord" src="https://img.shields.io/discord/440646105450020867">
   </a>
 </p>
 
@@ -25,7 +25,7 @@ npm install
 Create a config file in this format in the root folder:
 ```json
 {
-	"client_id": "your-spotify-clientid",
+"client_id": "your-spotify-clientid",
     "client_secret": "your-spotify-clientsecret",
     "playlist_id": "playlist-id",
     "refresh_token": "refresh-token-from-spotify",
