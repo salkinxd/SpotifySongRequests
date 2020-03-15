@@ -55,7 +55,7 @@ function onConnectedHandler(addr, port) {
 
 // Called every time a message comes in
 function onMessageHandler(target, context, msg, self) {
-	if (!message.content.startsWith(prefix) || self) { return; } // Ignore messages from the bot and messages without !
+	if (!msg.startsWith(config.prefix) || self) { return; } // Ignore messages from the bot and messages without !
 	// Remove whitespace from chat message
 	const args = msg.slice(config.prefix.length).split(' ');
 	const command = args.shift().toLowerCase();
