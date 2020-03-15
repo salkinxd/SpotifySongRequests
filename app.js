@@ -126,6 +126,15 @@ function addToPlaylist(args) {
 	//Search for track
 	spotifyApi.searchTracks(args)
 		.then(function (SearchTrackdata) {
+			if (SearchTrackdata.body.tracks.items.length == 0) {
+				client.say(config.CHANNEL_NAME, "Diesen Song gibt es leider nicht auf Spotify!").then((data) => {
+					console.log("Message sent!", data);
+				}).catch((err) => {
+					console.error(err);
+				});
+				return;
+			}
+			console.log(SearchTrackdata);
 			var trackURIshort = SearchTrackdata.body.tracks.items[0].uri.split(":")[2]
 			console.log("The Track\'s URI is: ", trackURIshort);
 			console.log();
