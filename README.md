@@ -14,7 +14,7 @@
 
 > Spotify Song Request Bot
 
-### 🏠 [Homepage](https://salkin.at/)
+### 🏠 [Homepage](https://github.com/salkinxd/SpotifySongRequests#readme)
 
 ## Install
 
@@ -25,7 +25,7 @@ npm install
 Create a config file in this format in the root folder:
 ```json
 {
-"client_id": "your-spotify-clientid",
+    "client_id": "your-spotify-clientid",
     "client_secret": "your-spotify-clientsecret",
     "playlist_id": "playlist-id",
     "refresh_token": "refresh-token-from-spotify",
