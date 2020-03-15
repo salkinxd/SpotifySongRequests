@@ -14,7 +14,7 @@
 
 > Spotify Song Request Bot
 
-### 🏠 [Homepage](https://github.com/salkinxd/SpotifySongRequests#readme)
+### 🏠 [Homepage](https://salkin.at/)
 
 ## Install
 
