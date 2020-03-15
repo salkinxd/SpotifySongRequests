@@ -1,4 +1,5 @@
 require('console-stamp')(console, 'HH:MM:ss');
+var request = require('request');
 var SpotifyWebApi = require('spotify-web-api-node');
 var config = require("./config.json");
 var tmi = require('tmi.js');
@@ -126,44 +127,43 @@ function addToPlaylist(args) {
 	spotifyApi.searchTracks(args)
 		.then(function (SearchTrackdata) {
 			var trackURIshort = SearchTrackdata.body.tracks.items[0].uri.split(":")[2]
-			spotifyApi.getPlaylistTracks(config.playlist_id)
-				.then(
-					function (GetPlaylistdata) {
-						//console.log('The playlist contains these tracks', GetPlaylistdata.body.items);
-						function checkIfTrackExists(age) {
-							return age.track.id === trackURIshort;
-						}
-						//Check if track exists in result from search
-						if (GetPlaylistdata.body.items.some(checkIfTrackExists)) {
-							console.log("Song already exists!");
-							//Say in chat that song already exists
-							client.say(config.CHANNEL_NAME, "Dieser Song existiert bereits auf der Playlist!").then((data) => {
-								console.log("Message sent!", data);
-							}).catch((err) => {
-								console.error(err);
-							});
-							return;
-						} else {
-							console.log("Song doesn't exist!");
-							spotifyApi.addTracksToPlaylist(config.playlist_id, [SearchTrackdata.body.tracks.items[0].uri])
-								.then(function (addTracksdata) {
-									console.log('Added tracks to playlist!');
-									//Say in chat that song was added to playlist
-									client.say(config.CHANNEL_NAME, "Der Song: " + SearchTrackdata.body.tracks.items[0].name + " - " + SearchTrackdata.body.tracks.items[0].artists[0].name + " wurde hinzugefügt!").then((data) => {
+			console.log("The Track\'s URI is: ", trackURIshort);
+			console.log();
+
+			spotifyApi.getPlaylist(config.playlist_id,{fields: "tracks.total"}).then(async function (getPlaylistData) {
+				var trackAmount = getPlaylistData.body.tracks.total;
+				console.log("There are " + trackAmount + " Songs in the Playlist!");
+				var Tracks = [];
+				for (let index = 0; index < (trackAmount / 100); index++) {
+					await spotifyApi.getPlaylistTracks(config.playlist_id, {offset: index * 100}).then((getPlaylistTracksData) => {
+						getPlaylistTracksData.body.items.forEach(element => {
+							Tracks.push(element.track.uri.split(":")[2]);
+						});
+						console.log(getPlaylistTracksData.body.next);
+						if (getPlaylistTracksData.body.next == null) {
+							if(Tracks.includes(trackURIshort)) {
+								client.say(config.CHANNEL_NAME, "Dieser song existiert bereits auf der Playlist!").then((data) => {
+									console.log("Message sent!", data);
+								}).catch((err) => {
+									console.error(err);
+								});
+							} else {
+								spotifyApi.addTracksToPlaylist(config.playlist_id, ["spotify:track:" + trackURIshort])
+								.then(function(data) {
+									console.log('Added ' + SearchTrackdata.body.tracks.items[0].name + 'by' + SearchTrackdata.body.tracks.items[0].artists[0].name + ' to playlist!');
+									client.say(config.CHANNEL_NAME, "Der Song " + SearchTrackdata.body.tracks.items[0].name + " von " + SearchTrackdata.body.tracks.items[0].artists[0].name + " wurde hinzugefügt!").then((data) => {
 										console.log("Message sent!", data);
 									}).catch((err) => {
 										console.error(err);
 									});
-								}, function (err) {
-									console.log('Something went wrong when adding songs!', err);
+								}, function(err) {
+									console.log('Something went wrong!', err);
 								});
-							return;
+							}
 						}
-					},
-					function (err) {
-						console.log('Something went wrong!', err);
-					}
-				);
+					}, function(err) { console.log(err) });
+				}
+			});
 		}, function (err) {
 			console.error(err);
 		});
